@@ -36,8 +36,8 @@ desde(X, Y):-desde(X, Z),  Y is Z + 1.
 %%Predicados pedidos.
 
 % 1) %esDeterministico(+Automata)
-esDeterministico(_).
-
+	%∀ (q1,e1,p1),(q2,e2,p2) si q1=q2 y e1=e2 => p1=p2.
+esDeterministico(X) :- forall((transicionesDe(X,T), member((Q,E,P1),T), member((Q,E,P2),T)), (P1 = P2)). 
 
 % 2) estados(+Automata, -Estados)
 estados(_, _).
