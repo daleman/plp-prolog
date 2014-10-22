@@ -45,12 +45,24 @@ losEstados([],[]).
 losEstados([(Q,E,P)|TS],L):- losEstados(TS,TSS), append([Q],[P|TSS],L).
 %habria que sacar los duplicados a los Estados y ordenarlos en forma creciente . No entiendo como crecen los estados???
 
-estados(A, E):- transicionesDe(A,T), losEstados(T,EstadosDeTransiciones),inicialDe(A,I), finalesDe(A,F), append([I|F],EstadosDeTransiciones,E).
+estados(A, E):- transicionesDe(A,T), losEstados(T,EstadosDeTransiciones),inicialDe(A,I),
+				     finalesDe(A,F), append([I|F],EstadosDeTransiciones,L),sacarDuplicados(L,E).
+
+sacarDuplicados([],[]).
+sacarDuplicados([L|LS],[L|F]):- not(member(L,LS)),sacarDuplicados(LS,F).
+sacarDuplicados([L|LS],F):- member(L,LS),sacarDuplicados(LS,F).
 
 
 
 % 3)esCamino(+Automata, ?EstadoInicial, ?EstadoFinal, +Camino)
-esCamino(_, _, _, _).
+
+%nos fijamos en las transiciones y vemos si hay camino en un paso, o si hay camino a n-1 pasos desde un estado posterior al estado inicial.
+estadoSiguiente(A,E,S):- member((E,_,S),T), transicionesDe(A,T). 
+
+
+esCamino(A, S1, S2, []):- S1=S2.
+esCamino(A, S1, S2, [C]):- C = S1, C = S2.
+esCamino(A, S1, S2, [C|CS]):- C = S1, estadoSiguiente(A,S1,SMedio), esCamino(A,SMedio,S2,CS).
 
 % 4) ¿el predicado anterior es o no reversible con respecto a Camino y por qué?
 % Responder aquí.
