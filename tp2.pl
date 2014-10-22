@@ -40,7 +40,13 @@ desde(X, Y):-desde(X, Z),  Y is Z + 1.
 esDeterministico(X) :- forall((transicionesDe(X,T), member((Q,E,P1),T), member((Q,E,P2),T)), (P1 = P2)). 
 
 % 2) estados(+Automata, -Estados)
-estados(_, _).
+
+losEstados([],[]).
+losEstados([(Q,E,P)|TS],L):- losEstados(TS,TSS), append([Q],[P|TSS],L).
+%habria que sacar los duplicados a los Estados y ordenarlos en forma creciente . No entiendo como crecen los estados???
+
+estados(A, E):- transicionesDe(A,T), losEstados(T,EstadosDeTransiciones),inicialDe(A,I), finalesDe(A,F), append([I|F],EstadosDeTransiciones,E).
+
 
 
 % 3)esCamino(+Automata, ?EstadoInicial, ?EstadoFinal, +Camino)
