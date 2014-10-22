@@ -46,17 +46,17 @@ esDeterministico(A) :- forall((transicionesDe(A,Transiciones),
 									% estadosDeTransiciones
 estados(A, Estados) :- inicialDe(A,Inicial), finalesDe(A,Finales), transicionesDe(A,Transiciones),
 						estadosDeTransiciones(Transiciones,EstadosDeTransiciones),
-						append([Inicial|Finales],EstadosDeTransiciones,L), sacarDuplicados(L,Estados).
+						union([Inicial],Finales,InicialMasFinales),
+						union(InicialMasFinales,EstadosDeTransiciones,Estados).
 
 %habria que sacar los duplicados a los Estados y ordenarlos en forma creciente . No entiendo como crecen los estados???
 %estadosDeTransiciones(+Transiciones,-Estados) :- Estados = [q | (q,e,p) ∈ Transiciones] U
 												% [p | (q,e,p) ∈ Transiciones]
 estadosDeTransiciones([],[]).
-estadosDeTransiciones([(Q,_,P)|TS],L):- estadosDeTransiciones(TS,TSS), append([Q],[P|TSS],L).
-
-sacarDuplicados([],[]).
-sacarDuplicados([L|LS],[L|F]):- not(member(L,LS)), sacarDuplicados(LS,F).
-sacarDuplicados([L|LS],F):- member(L,LS), sacarDuplicados(LS,F).
+estadosDeTransiciones([(Q,_,P)|Transiciones],EstadosMasQyP) :-
+											estadosDeTransiciones(Transiciones,Estados),
+											union([Q],Estados,EstadosMasQ),
+											union([P],EstadosMasQ,EstadosMasQyP).
 
 % 3) esCamino(+Automata, ?EstadoInicial, ?EstadoFinal, +Camino)
 
