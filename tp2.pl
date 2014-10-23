@@ -1,19 +1,19 @@
 %Autómatas de ejemplo. Si agregan otros, mejor.
 
-ejemplo(1, a(s1, [sf], [(s1, a, sf)])).
-ejemplo(2, a(si, [si], [(si, a, si)])).
-ejemplo(3, a(si, [si], [])).
+ejemplo(1, a(s1, [s2], [(s1, a, s2)])).
+ejemplo(2, a(s1, [s1], [(s1, a, s1)])).
+ejemplo(3, a(s1, [s1], [])).
 ejemplo(4, a(s1, [s2, s3], [(s1, a, s1), (s1, a, s2), (s1, b, s3)])).
 ejemplo(5, a(s1, [s2, s3], [(s1, a, s1), (s1, b, s2), (s1, c, s3), (s2, c, s3)])).
 ejemplo(6, a(s1, [s3], [(s1, b, s2), (s3, n, s2), (s2, a, s3)])).
 ejemplo(7, a(s1, [s2], [(s1, a, s3), (s3, a, s3), (s3, b, s2), (s2, b, s2)])).
-ejemplo(8, a(s1, [sf], [(s1, a, s2), (s2, a, s3), (s2, b, s3), (s3, a, s1), (s3, b, s2), (s3, b, s4), (s4, f, sf)])). % No deterministico :)
+ejemplo(8, a(s1, [s5], [(s1, a, s2), (s2, a, s3), (s2, b, s3), (s3, a, s1), (s3, b, s2), (s3, b, s4), (s4, f, s5)])). % No deterministico :)
 ejemplo(9, a(s1, [s1], [(s1, a, s2), (s2, b, s1)])).
 ejemplo(10, a(s1, [s10, s11], 
         [(s2, a, s3), (s4, a, s5), (s9, a, s10), (s5, d, s6), (s7, g, s8), (s15, g, s11), (s6, i, s7), (s13, l, s14), (s8, m, s9), (s12, o, s13), (s14, o, s15), (s1, p, s2), (s3, r, s4), (s2, r, s12), (s10, s, s11)])).
 
 ejemploMalo(1, a(s1, [s2], [(s1, a, s1), (s1, b, s2), (s2, b, s2), (s2, a, s3)])). %s3 es un estado sin salida.
-ejemploMalo(2, a(s1, [sf], [(s1, a, s1), (sf, b, sf)])). %sf no es alcanzable.
+ejemploMalo(2, a(s1, [s2], [(s1, a, s1), (s2, b, s2)])). %s2 no es alcanzable.
 ejemploMalo(3, a(s1, [s2, s3], [(s1, a, s3), (s1, b, s3)])). %s2 no es alcanzable.
 ejemploMalo(4, a(s1, [s3], [(s1, a, s3), (s2, b, s3)])). %s2 no es alcanzable.
 ejemploMalo(5, a(s1, [s3, s2, s3], [(s1, a, s2), (s2, b, s3)])). %Tiene un estado final repetido.
@@ -42,6 +42,7 @@ esDeterministico(A) :- forall((transicionesDe(A,Transiciones),
 						member((Q,E,P1),Transiciones), member((Q,E,P2),Transiciones)),
 						(P1 = P2)).
 
+%TODO:habria que ordenarlos en forma creciente . No entiendo como crecen los estados???
 % 2) estados(+Automata, -Estados) :- Estados = inicial(Automata) U finales(Automata) U
 									% estadosDeTransiciones
 estados(A, Estados) :- inicialDe(A,Inicial), finalesDe(A,Finales), transicionesDe(A,Transiciones),
@@ -49,7 +50,6 @@ estados(A, Estados) :- inicialDe(A,Inicial), finalesDe(A,Finales), transicionesD
 						union([Inicial],Finales,InicialMasFinales),
 						union(InicialMasFinales,EstadosDeTransiciones,Estados).
 
-%habria que sacar los duplicados a los Estados y ordenarlos en forma creciente . No entiendo como crecen los estados???
 %estadosDeTransiciones(+Transiciones,-Estados) :- Estados = [q | (q,e,p) ∈ Transiciones] U
 												% [p | (q,e,p) ∈ Transiciones]
 estadosDeTransiciones([],[]).
@@ -59,23 +59,31 @@ estadosDeTransiciones([(Q,_,P)|Transiciones],EstadosMasQyP) :-
 											union([P],EstadosMasQ,EstadosMasQyP).
 
 % 3) esCamino(+Automata, ?EstadoInicial, ?EstadoFinal, +Camino)
+%Nos fijamos en las transiciones y vemos si hay camino en un paso, o si hay camino a n-1 pasos desde un estado posterior al estado inicial.
+esCamino(_, S1, S1, [S1]).
+esCamino(A, S1, S2, [S1,S2]):- estadoSiguiente(A,S1,S2).
+esCamino(A, S1, S2, [S1|CS]):- estadoSiguiente(A,S1,SMedio), SMedio \= S2,
+								not(member(SMedio,CS)), esCamino(A,SMedio,S2,CS).
+%Agregamos la restricción 'not(member(SMedio,CS))' para evitar caer en ciclos infinitos.
 
-%nos fijamos en las transiciones y vemos si hay camino en un paso, o si hay camino a n-1 pasos desde un estado posterior al estado inicial.
-estadoSiguiente(A,E,S):- member((E,_,S),T), transicionesDe(A,T). 
-
-
-esCamino(_, S1, S2, []):- S1=S2.
-esCamino(_, S1, S2, [C]):- C = S1, C = S2.
-esCamino(A, S1, S2, [C|CS]):- C = S1, estadoSiguiente(A,S1,SMedio), esCamino(A,SMedio,S2,CS).
+%estadoSiguiente(+Automata, +Estado, -Siguiente) :- ∃ (q,e,p) transición tq Estado=q y Siguiente=p
+estadoSiguiente(A,E,S):- transicionesDe(A,T), member((E,_,S),T).
 
 % 4) ¿el predicado anterior es o no reversible con respecto a Camino y por qué?
 % Responder aquí.
 
 % 5) caminoDeLongitud(+Automata, +N, -Camino, -Etiquetas, ?S1, ?S2)
-caminoDeLongitud(_, _, _, _, _, _).
+%La misma idea, pero restringiendo la longitud del camino.
+caminoDeLongitud(_,1,[S1],[],S1,S1).
+caminoDeLongitud(A,2,[S1,S2],[E],S1,S2) :- transicionesDe(A,T), member((S1,E,S2),T).
+caminoDeLongitud(A,N,[S1|Cs],[E|Es],S1,S2):- N>2, Nm1 is N-1,
+												transicionesDe(A,T), member((S1,E,SMedio),T),
+												caminoDeLongitud(A,Nm1,Cs,Es,SMedio,S2).
+%Agregamos la restricción 'N>2' para evitar colisión con la segunda regla.
 
-% 6) alcanzable(+Automata, +Estado)
-alcanzable(_, _).
+% 6) alcanzable(+Automata, +Estado) :- ∃ N2 tq ∃ (q0,...,q) camino de longitud N.
+alcanzable(A, E):- inicialDe(A,I), estados(A,Estados), length(Estados,CantEstados), CEMasUno is CantEstados+1,
+					not(not((between(2,CEMasUno,N), caminoDeLongitud(A,N,_,_,I,E)))).
 
 % 7) automataValido(+Automata)
 automataValido(_).
@@ -113,4 +121,82 @@ test(12) :- ejemplo(8, A),  findall(P, palabraMasCorta(A, P), Lista), length(Lis
 test(13) :- ejemplo(10, A),  findall(P, palabraMasCorta(A, P), [[p, r, o, l, o, g]]).
 test(14) :- forall(member(X, [2, 4, 5, 6, 7, 8, 9]), (ejemplo(X, A), hayCiclo(A))).
 test(15) :- not((member(X, [1, 3, 10]), ejemplo(X, A), hayCiclo(A))).
+
+%Test alcanzable
+test(16) :- ejemplo(1, A1),
+				not(alcanzable(A1,s1)),
+					alcanzable(A1,s2),
+			ejemplo(2, A2),
+					alcanzable(A2,s1),
+			ejemplo(3, A3),
+				not(alcanzable(A3,s1)),
+			ejemplo(4, A4),
+					alcanzable(A4,s1),
+					alcanzable(A4,s2),
+					alcanzable(A4,s3),
+			ejemplo(5, A5),
+					alcanzable(A5,s1),
+					alcanzable(A5,s2),
+					alcanzable(A5,s3),
+			ejemplo(6, A6),
+				not(alcanzable(A6,s1)),
+					alcanzable(A6,s2),
+					alcanzable(A6,s3),
+			ejemplo(7, A7),
+				not(alcanzable(A7,s1)),
+					alcanzable(A7,s2),
+					alcanzable(A7,s3),
+			ejemplo(8, A8),
+					alcanzable(A8,s1),
+					alcanzable(A8,s2),
+					alcanzable(A8,s3),
+					alcanzable(A8,s4),
+					alcanzable(A8,s5),
+			ejemplo(9, A9),
+					alcanzable(A9,s1),
+					alcanzable(A9,s2),
+			ejemplo(10, A),
+				not(alcanzable(A,s1)),
+					alcanzable(A,s2),
+					alcanzable(A,s3),
+					alcanzable(A,s4),
+					alcanzable(A,s5),
+					alcanzable(A,s6),
+					alcanzable(A,s7),
+					alcanzable(A,s8),
+					alcanzable(A,s9),
+					alcanzable(A,s10),
+					alcanzable(A,s11),
+					alcanzable(A,s12),
+					alcanzable(A,s13),
+					alcanzable(A,s14),
+					alcanzable(A,s15),
+			ejemploMalo(1, M1),
+					alcanzable(M1,s1),
+					alcanzable(M1,s2),
+					alcanzable(M1,s3),
+			ejemploMalo(2, M2),
+					alcanzable(M2,s1),
+				not(alcanzable(M2,s2)),
+			ejemploMalo(3, M3),
+				not(alcanzable(M3,s1)),
+				not(alcanzable(M3,s2)),
+					alcanzable(M3,s3),
+			ejemploMalo(4, M4),
+				not(alcanzable(M4,s1)),
+				not(alcanzable(M4,s2)),
+					alcanzable(M4,s3),
+			ejemploMalo(5, M5),
+				not(alcanzable(M5,s1)),
+					alcanzable(M5,s2),
+					alcanzable(M5,s3),
+			ejemploMalo(6, M6),
+				not(alcanzable(M6,s1)),
+					alcanzable(M6,s2),
+					alcanzable(M6,s3),
+			ejemploMalo(7, M7),
+				not(alcanzable(M7,s1)),
+					alcanzable(M7,s2),
+					alcanzable(M7,s3).
+
 tests :- forall(between(1, 15, N), test(N)). %IMPORTANTE: Actualizar la cantidad total de tests para contemplar los que agreguen ustedes.
