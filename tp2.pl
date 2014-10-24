@@ -35,64 +35,122 @@ desde(X, Y):-desde(X, Z),  Y is Z + 1.
 
 %%Predicados pedidos.
 
-% 1) esDeterministico(+Automata) :- ∀ (q1,e1,p1),(q2,e2,p2) transiciones:
+% 1) esDeterministico(+Automata) :- ∀ (q1,e1,p1) y (q2,e2,p2) transiciones,
 									% si q1=q2 y e1=e2 =>
 									% p1=p2.
 esDeterministico(A) :- forall((transicionesDe(A,Transiciones),
 						member((Q,E,P1),Transiciones), member((Q,E,P2),Transiciones)),
 						(P1 = P2)).
 
-% 2) estados(+Automata, -Estados) :- Estados = inicial(Automata) U finales(Automata) U
+% 2) estados(+Automata, -Estados) :- estados = {inicial} U finales U
 									% estadosDeTransiciones
 estados(A, EstadosOrdenados) :- inicialDe(A,Inicial), finalesDe(A,Finales), transicionesDe(A,Transiciones),
 								estadosDeTransiciones(Transiciones,EstadosDeTransiciones),
 								union([Inicial|Finales],EstadosDeTransiciones,Estados),
 								sort(Estados,EstadosOrdenados).
 
-%estadosDeTransiciones(+Transiciones,-Estados) :- Estados = [q | (q,e,p) ∈ Transiciones] U
-												% [p | (q,e,p) ∈ Transiciones]
+% estadosDeTransiciones(+Transiciones,-Estados) :- estados = [q | (q,e,p) ∈ transiciones] U
+												% [p | (q,e,p) ∈ transiciones]
 estadosDeTransiciones([],[]).
 estadosDeTransiciones([(Q,_,P)|Transiciones],MasEstados) :-
 											estadosDeTransiciones(Transiciones,Estados),
 											union([Q,P],Estados,MasEstados).
 
 % 3) esCamino(+Automata, ?EstadoInicial, ?EstadoFinal, +Camino)
-%Nos fijamos en las transiciones y vemos si hay camino en un paso, o si hay camino a n-1 pasos desde un estado posterior al estado inicial.
+% Nos fijamos en las transiciones y vemos si hay camino en un paso, o si hay camino a n-1 pasos desde un estado posterior al estado inicial.
 esCamino(_, E, E, [E]).
-%esCamino(A, Inicial, Final, [Inicial,Final]) :- estadoSiguiente(A,Inicial,Final).
 esCamino(A, Inicial, Final, [Inicial,Medio|Es]) :- estadoSiguiente(A,Inicial,Medio),
-													esCamino(A,Medio,Final,[Medio|Es]).
+													esCamino(A,Medio,Final,[Medio|Es]), !.
 
-%estadoSiguiente(+Automata, +Estado, -Siguiente) :- ∃ (q,e,p) transición tq Estado=q y Siguiente=p
+% Agregamos el '!' para que sólo devuelva una unificación. Si para un par de estados consecutivos en
+% el camino, existen dos transiciones posibles, 'esCamino' devolvería otra unificación pero idéntica.
+% Como todas las unificaciones posibles son iguales (determinadas por los estados primero y último
+% del camino), sólo le permitimos devolver una. Esta aclaración es válida teniendo en cuenta que el
+% parámetro 'Camino' siepmre viene instanciado.
+
+% estadoSiguiente(+Automata, +Estado, -Siguiente) :- ∃ (q,e,p) transición tq Estado=q y Siguiente=p
 estadoSiguiente(A,E,S):- transicionesDe(A,T), member((E,_,S),T).
 
 % 4) ¿el predicado anterior es o no reversible con respecto a Camino y por qué?
-% Responder aquí.
+% No, al agregar el '!' al final le impedimos que genere más de un camino distinto. Para que
+% lo sea
 
 % 5) caminoDeLongitud(+Automata, +N, -Camino, -Etiquetas, ?S1, ?S2)
-%La misma idea, pero restringiendo la longitud del camino.
+% La misma idea, pero restringiendo la longitud del camino.
 caminoDeLongitud(_,1,[S1],[],S1,S1).
 caminoDeLongitud(A,2,[S1,S2],[E],S1,S2) :- transicionesDe(A,T), member((S1,E,S2),T).
 caminoDeLongitud(A,N,[S1|Cs],[E|Es],S1,S2):- N>2, Nm1 is N-1,
 												transicionesDe(A,T), member((S1,E,SMedio),T),
 												caminoDeLongitud(A,Nm1,Cs,Es,SMedio,S2).
-%Agregamos la restricción 'N>2' para evitar colisión con la segunda regla.
+% Agregamos la restricción 'N>2' para evitar colisión con la segunda regla.
 
 % 6) alcanzable(+Automata, +Estado) :- ∃ N2 tq ∃ (q0,...,q) camino de longitud N.
-alcanzable(A, E):- inicialDe(A,I), estados(A,Estados), length(Estados,CantEstados), CEMasUno is CantEstados+1,
+alcanzable(A,E):- inicialDe(A,I), estados(A,Estados), length(Estados,CantEstados), CEMasUno is CantEstados+1,
 					not(not((between(2,CEMasUno,N), caminoDeLongitud(A,N,_,_,I,E)))).
 
-% 7) automataValido(+Automata)
-automataValido(_).
+% 7) automataValido(+Automata) :- cumple las 5 cosas.
+automataValido(A) :- transicionesSalientes(A),
+						todosAlcanzables(A),
+						algunFinal(A),
+						sinFinalesRepetidos(A),
+						sinTransicionesRepetidas(A).
+
+% transicionesSalientes(+Automata) :- ∀ E estado, ¬(E final) => ∃ algunaTransicionSaliente
+transicionesSalientes(A) :- forall(
+					(estados(A,Estados), member(E,Estados), finalesDe(A,Fs), not(member(E,Fs))),
+					algunaTransicionSaliente(A,E)
+								).
+
+% todosAlcanzables(+Automata) :- ∀ E estado, ¬(E inicial) => alcanzable(E)
+todosAlcanzables(A) :- forall(
+					(estados(A,Estados), member(E,Estados), inicialDe(A,I), E\=I),
+					alcanzable(A,E)
+							).
+
+% algunFinal(+Automata) :- length (finales) > 0
+algunFinal(A):- finalesDe(A,Finales), length(Finales,N), N>0.
+
+% sinFinalesRepetidos(+Automata) :- ∀ E estado final, |finales|_E = 1
+sinFinalesRepetidos(A) :- forall(
+					(finalesDe(A,Finales), member(E,Finales)),
+					cuenta(E,Finales,1)
+								).
+
+% sinTransicionesRepetidas(+Automata) :- ∀ T transicion, |transiciones|_T = 1
+sinTransicionesRepetidas(A) :- forall(
+					(transicionesDe(A,Transiciones), member(T,Transiciones)),
+					cuenta(T,Transiciones,1)
+									).
+
+% algunaTransicionSaliente(+Automata,+Estado) :- ∃ T transicion de la forma (Estado,_,_)
+algunaTransicionSaliente(A,E) :- not(not((
+					transicionesDe(A,Transiciones), member((E,_,_),Transiciones)
+										))).
+
+% cuenta(+Elemento,+Lista,-N) : Cantdad de apariciones
+cuenta(_,[],0).
+cuenta(E,[E|FS],Nm1) :- cuenta(E,FS,N), Nm1 is N+1.
+cuenta(E,[F|FS],N) :- E\=F, cuenta(E,FS,N).
 
 %--- NOTA: De acá en adelante se asume que los autómatas son válidos.
 
+% 8) hayCiclo(+Automata) :- ∃ E estado tq ∃ (E,....,E) camino
+hayCiclo(A) :- estados(A,Estados), length(Estados,CantEstados), between(2,CantEstados,N),
+				member(S1,Estados), caminoDeLongitud(A,N,_,_,S1,S1).
 
-% 8) hayCiclo(+Automata)
-hayCiclo(_).
+% 9) reconoce(+Automata, ?Palabra) :- recorrer(transiciones, finales, inicial, palabra)
+reconoce(A,P) :- inicialDe(A,I), finalesDe(A,F), transicionesDe(A,T1),
+					transicionesReordenadas(T1,T2), recorrer(T2,F,I,P).
 
-% 9) reconoce(+Automata, ?Palabra)
-reconoce(_, _).
+% recorrer(
+recorrer(_,F,E,[]) :- member(E,F).
+recorrer(T,F,E,[X|Xs]) :- member((E,X,Q),T), recorrer(T,F,Q,Xs).
+
+% transicionesReordenadas(
+% Creo que hay que poner primero las que te acercan a estados finales!!!
+transicionesReordenadas([T],[T]).
+transicionesReordenadas([(E,X,E)|T1],T2) :- transicionesReordenadas(T1,T3), append(T3,[(E,X,E)],T2).
+transicionesReordenadas([(E,X,Q)|T1],[(E,X,Q)|T2]) :- E\=Q, transicionesReordenadas(T1,T2).
 
 % 10) PalabraMásCorta(+Automata, ?Palabra)
 palabraMasCorta(_, _).
@@ -119,7 +177,7 @@ test(13) :- ejemplo(10, A),  findall(P, palabraMasCorta(A, P), [[p, r, o, l, o, 
 test(14) :- forall(member(X, [2, 4, 5, 6, 7, 8, 9]), (ejemplo(X, A), hayCiclo(A))).
 test(15) :- not((member(X, [1, 3, 10]), ejemplo(X, A), hayCiclo(A))).
 
-%Test determinístico
+% Test determinístico
 test(16) :- ejemplo(1, A1), esDeterministico(A1),
 			ejemplo(2, A2), esDeterministico(A2),
 			ejemplo(3, A3), esDeterministico(A3),
@@ -138,7 +196,7 @@ test(16) :- ejemplo(1, A1), esDeterministico(A1),
 			ejemploMalo(6, M6), esDeterministico(M6),
 			ejemploMalo(7, M7), esDeterministico(M7).
 
-%Test estados
+% Test estados
 test(17) :- ejemplo(1, A1), estados(A1,[s1,s2]),
 			ejemplo(2, A2), estados(A2,[s1]),
 			ejemplo(3, A3), estados(A3,[s1]),
@@ -157,7 +215,7 @@ test(17) :- ejemplo(1, A1), estados(A1,[s1,s2]),
 			ejemploMalo(6, M6), estados(M6,[s1,s2,s3]),
 			ejemploMalo(7, M7), estados(M7,[s1,s2,s3]).
 
-%Test camino
+% Test camino
 test(18) :- ejemplo(1, A1), esCamino(A1,s1,s1,[s1]), esCamino(A1,s1,s2,[s1,s2]), not(esCamino(A1,s2,s1,_)),
 			ejemplo(2, A2), esCamino(A2,s1,s1,[s1]), esCamino(A2,s1,s1,[s1,s1]), esCamino(A2,s1,s1,[s1,s1,s1]),
 				esCamino(A2,s1,s1,[s1,s1,s1,s1,s1]), esCamino(A2,s1,s1,[s1,s1,s1,s1,s1,s1,s1,s1,s1,s1]),
@@ -180,7 +238,7 @@ test(18) :- ejemplo(1, A1), esCamino(A1,s1,s1,[s1]), esCamino(A1,s1,s2,[s1,s2]),
 			ejemploMalo(6, M6), esCamino(M6,s1,s3,[s1,s2,s3]),
 			ejemploMalo(7, M7), esCamino(M7,s1,s3,[s1,s2,s3]).
 
-%Test camino de longitud
+% Test camino de longitud
 test(19) :- ejemplo(1, A1), caminoDeLongitud(A1,2,[s1,s2],[a],s1,s2), not(caminoDeLongitud(A1,3,_,_,_,_)),
 			ejemplo(2, A2), caminoDeLongitud(A2,5,[s1,s1,s1,s1,s1],[a,a,a,a],s1,s1),
 			ejemplo(3, A3), not(caminoDeLongitud(A3,2,_,_,_,_)),
@@ -208,7 +266,7 @@ test(19) :- ejemplo(1, A1), caminoDeLongitud(A1,2,[s1,s2],[a],s1,s2), not(camino
 			ejemploMalo(6, M6), findall(C,caminoDeLongitud(M6,2,C,[a],s1,s2),Caminos6), length(Caminos6,2),
 			ejemploMalo(7, M7), caminoDeLongitud(M7,3,[s1,s2,s3],[a,b],s1,s3).
 
-%Test alcanzable
+% Test alcanzable
 test(20) :- ejemplo(1, A1), not(alcanzable(A1,s1)), alcanzable(A1,s2),
 			ejemplo(2, A2), alcanzable(A2,s1),
 			ejemplo(3, A3), not(alcanzable(A3,s1)),
@@ -253,8 +311,8 @@ test(20) :- ejemplo(1, A1), not(alcanzable(A1,s1)), alcanzable(A1,s2),
 
 tests :- forall(between(1, 15, N), test(N)). %IMPORTANTE: Actualizar la cantidad total de tests para contemplar los que agreguen ustedes.
 
-%otros Tests (En estos tests no queremos que nos devuelva 'true' sino que queremos ver qué se genera):
-%Test estados
+% otros Tests (En estos tests no queremos que nos devuelva 'true' sino que queremos ver qué se genera):
+% Test estados
 testEstados(E1q2,E2q1,E3q1,E4q3,E5q3,E6q3,E7q3,E8q5,E9q2,Eq15,F1q3,F2q2,F3q3,F4q3,F5q3,F6q3,F7q3) :-
 			ejemplo(1, A1), estados(A1,E1q2), ejemplo(2, A2), estados(A2,E2q1),
 			ejemplo(3, A3), estados(A3,E3q1), ejemplo(4, A4), estados(A4,E4q3),
@@ -266,25 +324,18 @@ testEstados(E1q2,E2q1,E3q1,E4q3,E5q3,E6q3,E7q3,E8q5,E9q2,Eq15,F1q3,F2q2,F3q3,F4q
 			ejemploMalo(5, M5), estados(M5,F5q3), ejemploMalo(6, M6), estados(M6,F6q3),
 			ejemploMalo(7, M7), estados(M7,F7q3).
 
-%Test caminos 
-testCaminos(I1s1,F1s2,I2s1,F2s1,I3s1,F3s1,I4s1,F4s3) :-
-			ejemplo(1, A1), esCamino(A1,I1s1,F1s2,[s1,s2]), not(esCamino(A1,I1,F1,[s2,s1])),
+% Test caminos 
+testCaminos(I1s1,F1s2,I2s1,F2s1,I3s1,F3s1,I4s1,F4s3,I5s1,F5s3,I6s1,F6s2,I7s3,F7s2,I8s1,F8s5,I9s2,F9s1,I0a1,I0s10) :-
+			ejemplo(1, A1), esCamino(A1,I1s1,F1s2,[s1,s2]), not(esCamino(A1,_,_,[s2,s1])),
 			ejemplo(2, A2), esCamino(A2,I2s1,F2s1,[s1]), esCamino(A2,I2s1,F2s1,[s1,s1]),
 				esCamino(A2,I2s1,F2s1,[s1,s1,s1]), esCamino(A2,I2s1,F2s1,[s1,s1,s1,s1,s1]),
 			ejemplo(3, A3), esCamino(A3,I3s1,F3s1,[s1]),
-			ejemplo(4, A4), not(esCamino(A4,I4,F4,[s2,s3])), esCamino(A4,I4s1,F4s3,[s1,s3]),
-			ejemplo(5, A5), 
-			ejemplo(6, A6),
-			ejemplo(7, A7),
-			ejemplo(8, A8),
-			ejemplo(9, A9),
-			ejemplo(10, A),
-			ejemploMalo(1, M1),
-			ejemploMalo(2, M2),
-			ejemploMalo(3, M3),
-			ejemploMalo(4, M4),
-			ejemploMalo(5, M5),
-			ejemploMalo(6, M6),
-			ejemploMalo(7, M7).
+			ejemplo(4, A4), not(esCamino(A4,_,_,[s2,s3])), esCamino(A4,I4s1,F4s3,[s1,s3]),
+			ejemplo(5, A5), esCamino(A5,I5s1,F5s3,[s1,s1,s1,s2,s3]), esCamino(A5,I5s1,F5s3,[s1,s1,s3]),
+			ejemplo(6, A6), esCamino(A6,I6s1,F6s2,[s1,s2]), esCamino(A6,I6s1,F6s2,[s1,s2,s3,s2,s3,s2,s3,s2]),
+			ejemplo(7, A7), esCamino(A7,I7s3,F7s2,[s3,s2,s2,s2,s2]), esCamino(A7,I7s3,F7s2,[s3,s3,s3,s3,s2]),
+			ejemplo(8, A8), esCamino(A8,I8s1,F8s5,[s1,s2,s3,s4,s5]), esCamino(A8,I8s1,F8s5,[s1,s2,s3,s1,s2,s3,s2,s3,s4,s5]),
+			ejemplo(9, A9), esCamino(A9,I9s2,F9s1,[s2,s1]), esCamino(A9,I9s2,F9s1,[s2,s1,s2,s1,s2,s1,s2,s1]),
+			ejemplo(10, A), esCamino(A,I0a1,I0s10,[s1,s2,s3,s4,s5,s6,s7,s8,s9,s10]).
 
-%%Estaría bueno hacer un generador de autómatas...
+%% Estaría bueno hacer un generador de autómatas...
