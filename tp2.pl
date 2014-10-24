@@ -9,8 +9,8 @@ ejemplo(6, a(s1, [s3], [(s1, b, s2), (s3, n, s2), (s2, a, s3)])).
 ejemplo(7, a(s1, [s2], [(s1, a, s3), (s3, a, s3), (s3, b, s2), (s2, b, s2)])).
 ejemplo(8, a(s1, [s5], [(s1, a, s2), (s2, a, s3), (s2, b, s3), (s3, a, s1), (s3, b, s2), (s3, b, s4), (s4, f, s5)])). % No deterministico :)
 ejemplo(9, a(s1, [s1], [(s1, a, s2), (s2, b, s1)])).
-ejemplo(10, a(s1, [s10, s11], 
-        [(s2, a, s3), (s4, a, s5), (s9, a, s10), (s5, d, s6), (s7, g, s8), (s15, g, s11), (s6, i, s7), (s13, l, s14), (s8, m, s9), (s12, o, s13), (s14, o, s15), (s1, p, s2), (s3, r, s4), (s2, r, s12), (s10, s, s11)])).
+ejemplo(10, a(s1, [s10, s11], [(s2, a, s3), (s4, a, s5), (s9, a, s10), (s5, d, s6), (s7, g, s8), (s15, g, s11), (s6, i, s7),
+	(s13, l, s14), (s8, m, s9), (s12, o, s13), (s14, o, s15), (s1, p, s2), (s3, r, s4), (s2, r, s12), (s10, s, s11)])).
 
 ejemploMalo(1, a(s1, [s2], [(s1, a, s1), (s1, b, s2), (s2, b, s2), (s2, a, s3)])). %s3 es un estado sin salida.
 ejemploMalo(2, a(s1, [s2], [(s1, a, s1), (s2, b, s2)])). %s2 no es alcanzable.
@@ -59,8 +59,8 @@ estadosDeTransiciones([(Q,_,P)|Transiciones],MasEstados) :-
 % 3) esCamino(+Automata, ?EstadoInicial, ?EstadoFinal, +Camino)
 %Nos fijamos en las transiciones y vemos si hay camino en un paso, o si hay camino a n-1 pasos desde un estado posterior al estado inicial.
 esCamino(_, E, E, [E]).
-esCamino(A, Inicial, Final, [Inicial,Final]) :- estadoSiguiente(A,Inicial,Final).
-esCamino(A, Inicial, Final, [Inicial,Medio|Es]):- estadoSiguiente(A,Inicial,Medio),
+%esCamino(A, Inicial, Final, [Inicial,Final]) :- estadoSiguiente(A,Inicial,Final).
+esCamino(A, Inicial, Final, [Inicial,Medio|Es]) :- estadoSiguiente(A,Inicial,Medio),
 													esCamino(A,Medio,Final,[Medio|Es]).
 
 %estadoSiguiente(+Automata, +Estado, -Siguiente) :- ∃ (q,e,p) transición tq Estado=q y Siguiente=p
@@ -157,8 +157,59 @@ test(17) :- ejemplo(1, A1), estados(A1,[s1,s2]),
 			ejemploMalo(6, M6), estados(M6,[s1,s2,s3]),
 			ejemploMalo(7, M7), estados(M7,[s1,s2,s3]).
 
+%Test camino
+test(18) :- ejemplo(1, A1), esCamino(A1,s1,s1,[s1]), esCamino(A1,s1,s2,[s1,s2]), not(esCamino(A1,s2,s1,_)),
+			ejemplo(2, A2), esCamino(A2,s1,s1,[s1]), esCamino(A2,s1,s1,[s1,s1]), esCamino(A2,s1,s1,[s1,s1,s1]),
+				esCamino(A2,s1,s1,[s1,s1,s1,s1,s1]), esCamino(A2,s1,s1,[s1,s1,s1,s1,s1,s1,s1,s1,s1,s1]),
+			ejemplo(3, A3), esCamino(A3,s1,s1,[s1]), not(esCamino(A3,s1,s1,[s1,s1])),
+			ejemplo(4, A4), esCamino(A4,s1,s2,[s1,s2]), esCamino(A4,s1,s2,[s1,s1,s1,s1,s1,s2]), esCamino(A4,s1,s3,[s1,s3]),
+				not(esCamino(A4,s2,s3,_)), not(esCamino(A4,s3,s2,_)), not(esCamino(A4,s2,s1,_)), not(esCamino(A4,s3,s1,_)),
+			ejemplo(5, A5), esCamino(A5,s1,s2,[s1,s1,s1,s2]), esCamino(A5,s1,s3,[s1,s1,s1,s3]),
+				esCamino(A5,s2,s3,[s2,s3]), esCamino(A5,s1,s3,[s1,s1,s1,s1,s1,s2,s3]),
+			ejemplo(6, A6), esCamino(A6,s1,s3,[s1,s2,s3]), esCamino(A6,s1,s3,[s1,s2,s3,s2,s3,s2,s3,s2,s3,s2,s3]),
+			ejemplo(7, A7), esCamino(A7,s1,s2,[s1,s3,s2]), esCamino(A7,s1,s2,[s1,s3,s3,s3,s3,s2,s2,s2,s2,s2,s2,s2]),
+			ejemplo(8, A8), esCamino(A8,s1,s1,[s1]), esCamino(A8,s1,s1,[s1,s2,s3,s1]), esCamino(A8,s1,s5,[s1,s2,s3,s4,s5]),
+				esCamino(A8,s1,s5,[s1,s2,s3,s2,s3,s2,s3,s2,s3,s2,s3,s4,s5]),
+			ejemplo(9, A9), esCamino(A9,s1,s1,[s1]), esCamino(A9,s1,s1,[s1,s2,s1]), esCamino(A9,s1,s1,[s1,s2,s1,s2,s1]),
+			ejemplo(10, A), esCamino(A,s1,s11,[s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11]), esCamino(A,s1,s15,[s1,s2,s12,s13,s14,s15]),
+			ejemploMalo(1, M1), not(esCamino(M1,s3,s1,_)), not(esCamino(M1,s3,s2,_)),
+			ejemploMalo(2, M2), not(esCamino(M2,s1,s2,[s1,s2])),
+			ejemploMalo(3, M3), not(esCamino(M3,s1,s2,_)),
+			ejemploMalo(4, M4), not(esCamino(M4,s1,s2,_)),
+			ejemploMalo(5, M5), esCamino(M5,s1,s3,[s1,s2,s3]),
+			ejemploMalo(6, M6), esCamino(M6,s1,s3,[s1,s2,s3]),
+			ejemploMalo(7, M7), esCamino(M7,s1,s3,[s1,s2,s3]).
+
+%Test camino de longitud
+test(19) :- ejemplo(1, A1), caminoDeLongitud(A1,2,[s1,s2],[a],s1,s2), not(caminoDeLongitud(A1,3,_,_,_,_)),
+			ejemplo(2, A2), caminoDeLongitud(A2,5,[s1,s1,s1,s1,s1],[a,a,a,a],s1,s1),
+			ejemplo(3, A3), not(caminoDeLongitud(A3,2,_,_,_,_)),
+			ejemplo(4, A4), caminoDeLongitud(A4,5,[s1,s1,s1,s1,s3],[a,a,a,b],s1,s3),
+			ejemplo(5, A5), caminoDeLongitud(A5,5,[s1,s1,s1,s2,s3],[a,a,b,c],s1,s3),
+			ejemplo(6, A6), caminoDeLongitud(A6,7,[s1,s2,s3,s2,s3,s2,s3],[b,a,n,a,n,a],s1,s3),
+				caminoDeLongitud(A6,6,[s2,s3,s2,s3,s2,s3],[a,n,a,n,a],s2,s3),
+				caminoDeLongitud(A6,5,[s3,s2,s3,s2,s3],[n,a,n,a],s3,s3),
+				caminoDeLongitud(A6,4,[s2,s3,s2,s3],[a,n,a],s2,s3),
+			ejemplo(7, A7), caminoDeLongitud(A7,7,[s1,s3,s3,s3,s2,s2,s2],[a,a,a,b,b,b],s1,s2),
+			ejemplo(8, A8), caminoDeLongitud(A8,2,[s3,s2],[b],s3,s2), caminoDeLongitud(A8,2,[s3,s4],[b],s3,s4),
+			ejemplo(9, A9), caminoDeLongitud(A9,6,[s1,s2,s1,s2,s1,s2],[a,b,a,b,a],s1,s2),
+				caminoDeLongitud(A9,6,[s2,s1,s2,s1,s2,s1],[b,a,b,a,b],s2,s1),
+			ejemplo(10, A), caminoDeLongitud(A,7,[s1,s2,s12,s13,s14,s15,s11],[p,r,o,l,o,g],s1,s11),
+				caminoDeLongitud(A,10,[s1,s2,s3,s4,s5,s6,s7,s8,s9,s10],[p,a,r,a,d,i,g,m,a],s1,s10),
+			ejemploMalo(1, M1), caminoDeLongitud(M1,3,[s1,s2,s3],[b,a],s1,s3),
+				 caminoDeLongitud(M1,7,[s1,s1,s1,s1,s2,s2,s2],[a,a,a,b,b,b],s1,s2),
+			ejemploMalo(2, M2), caminoDeLongitud(M2,3,[s1,s1,s1],[a,a],s1,s1),
+				 caminoDeLongitud(M2,4,[s2,s2,s2,s2],[b,b,b],s2,s2),
+			ejemploMalo(3, M3), not( (between(2,10,N), caminoDeLongitud(M3,N,_,_,_,s2)) ),
+				caminoDeLongitud(M3,2,[s1,s3],[a],s1,s3), caminoDeLongitud(M3,2,[s1,s3],[a],s1,s3),
+			ejemploMalo(4, M4), not( (between(2,10,N), caminoDeLongitud(M4,N,_,_,_,s2)) ),
+				caminoDeLongitud(M4,2,[s2,s3],[b],s2,s3), caminoDeLongitud(M4,2,[s1,s3],[a],s1,s3),
+			ejemploMalo(5, M5), findall(C,caminoDeLongitud(M5,2,C,[b],s2,s3),Caminos5), length(Caminos5,1),
+			ejemploMalo(6, M6), findall(C,caminoDeLongitud(M6,2,C,[a],s1,s2),Caminos6), length(Caminos6,2),
+			ejemploMalo(7, M7), caminoDeLongitud(M7,3,[s1,s2,s3],[a,b],s1,s3).
+
 %Test alcanzable
-test(22) :- ejemplo(1, A1), not(alcanzable(A1,s1)), alcanzable(A1,s2),
+test(20) :- ejemplo(1, A1), not(alcanzable(A1,s1)), alcanzable(A1,s2),
 			ejemplo(2, A2), alcanzable(A2,s1),
 			ejemplo(3, A3), not(alcanzable(A3,s1)),
 			ejemplo(4, A4), alcanzable(A4,s1), alcanzable(A4,s2), alcanzable(A4,s3),
@@ -181,27 +232,6 @@ test(22) :- ejemplo(1, A1), not(alcanzable(A1,s1)), alcanzable(A1,s2),
 			ejemploMalo(6, M6), not(alcanzable(M6,s1)), alcanzable(M6,s2), alcanzable(M6,s3),
 			ejemploMalo(7, M7), not(alcanzable(M7,s1)), alcanzable(M7,s2), alcanzable(M7,s3).
 
-test(18) :- ejemplo(1, A1), esCamino(A1,s1,s1,[s1]), esCamino(A1,s1,s2,[s1,s2]), not(esCamino(A1,s2,s1,_)),
-			ejemplo(2, A2), esCamino(A2,s1,s1,[s1]), esCamino(A2,s1,s1,[s1,s1]), esCamino(A2,s1,s1,[s1,s1,s1]),
-				esCamino(A2,s1,s1,[s1,s1,s1,s1,s1]), esCamino(A2,s1,s1,[s1,s1,s1,s1,s1,s1,s1,s1,s1,s1]),
-			ejemplo(3, A3), esCamino(A3,s1,s1,[s1]), not(esCamino(A3,s1,s1,[s1,s1])),
-			ejemplo(4, A4), esCamino(A4,s1,s2,[s1,s2]), esCamino(A4,s1,s2,[s1,s1,s1,s1,s1,s2]), esCamino(A4,s1,s3,[s1,s3]),
-				not(esCamino(A4,s2,s3,_)), not(esCamino(A4,s3,s2,_)), not(esCamino(A4,s2,s1,_)), not(esCamino(A4,s3,s1,_)),
-			ejemplo(5, A5), esCamino(A5,s1,s2,[s1,s1,s1,s2]), esCamino(A5,s1,s3,[s1,s1,s1,s3]),
-				esCamino(A5,s2,s3,[s2,s3]), esCamino(A5,s1,s3,[s1,s1,s1,s1,s1,s2,s3]),
-			ejemplo(6, A6), esCamino(A6,s1,s3,[s1,s2,s3]), esCamino(A6,s1,s3,[s1,s2,s3,s2,s3,s2,s3,s2,s3,s2,s3]),
-			ejemplo(7, A7), esCamino(A7,s1,s2,[s1,s3,s2]), esCamino(A7,s1,s2,[s1,s3,s3,s3,s3,s2,s2,s2,s2,s2,s2,s2]),
-			ejemplo(8, A8), esCamino(A8,s1,s1,[s1]), esCamino(A8,s1,s1,[s1,s2,s3,s1]), esCamino(A8,s1,s5,[s1,s2,s3,s4,s5]),
-				esCamino(A8,s1,s5,[s1,s2,s3,s2,s3,s2,s3,s2,s3,s2,s3,s4,s5]),
-			ejemplo(9, A9), esCamino(A9,s1,s1,[s1]), esCamino(A9,s1,s1,[s1,s2,s1]), esCamino(A9,s1,s1,[s1,s2,s1,s2,s1]),
-			ejemplo(10, A), esCamino(A,s1,s11,[s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11]), esCamino(A,s1,s15,[s1,s2,s12,s13,s14,s15]),
-			ejemploMalo(1, M1), not(esCamino(M1,s3,s1,_)), not(esCamino(M1,s3,s2,_)),
-			ejemploMalo(2, M2), not(esCamino(M2,s1,s2,[s1,s2])),
-			ejemploMalo(3, M3), not(esCamino(M3,s1,s2,_)),
-			ejemploMalo(4, M4), not(esCamino(M4,s1,s2,_)),
-			ejemploMalo(5, M5), esCamino(M5,s1,s3,[s1,s2,s3]),
-			ejemploMalo(6, M6), esCamino(M6,s1,s3,[s1,s2,s3]),
-			ejemploMalo(7, M7). esCamino(M7,s1,s3,[s1,s2,s3]),
 
 %test(30) :- ejemplo(1, A1),
 %			ejemplo(2, A2),
@@ -222,3 +252,39 @@ test(18) :- ejemplo(1, A1), esCamino(A1,s1,s1,[s1]), esCamino(A1,s1,s2,[s1,s2]),
 %			ejemploMalo(7, M7),
 
 tests :- forall(between(1, 15, N), test(N)). %IMPORTANTE: Actualizar la cantidad total de tests para contemplar los que agreguen ustedes.
+
+%otros Tests (En estos tests no queremos que nos devuelva 'true' sino que queremos ver qué se genera):
+%Test estados
+testEstados(E1q2,E2q1,E3q1,E4q3,E5q3,E6q3,E7q3,E8q5,E9q2,Eq15,F1q3,F2q2,F3q3,F4q3,F5q3,F6q3,F7q3) :-
+			ejemplo(1, A1), estados(A1,E1q2), ejemplo(2, A2), estados(A2,E2q1),
+			ejemplo(3, A3), estados(A3,E3q1), ejemplo(4, A4), estados(A4,E4q3),
+			ejemplo(5, A5), estados(A5,E5q3), ejemplo(6, A6), estados(A6,E6q3),
+			ejemplo(7, A7), estados(A7,E7q3), ejemplo(8, A8), estados(A8,E8q5),
+			ejemplo(9, A9), estados(A9,E9q2), ejemplo(10, A), estados(A,Eq15),
+			ejemploMalo(1, M1), estados(M1,F1q3), ejemploMalo(2, M2), estados(M2,F2q2),
+			ejemploMalo(3, M3), estados(M3,F3q3), ejemploMalo(4, M4), estados(M4,F4q3),
+			ejemploMalo(5, M5), estados(M5,F5q3), ejemploMalo(6, M6), estados(M6,F6q3),
+			ejemploMalo(7, M7), estados(M7,F7q3).
+
+%Test caminos 
+testCaminos(I1s1,F1s2,I2s1,F2s1,I3s1,F3s1,I4s1,F4s3) :-
+			ejemplo(1, A1), esCamino(A1,I1s1,F1s2,[s1,s2]), not(esCamino(A1,I1,F1,[s2,s1])),
+			ejemplo(2, A2), esCamino(A2,I2s1,F2s1,[s1]), esCamino(A2,I2s1,F2s1,[s1,s1]),
+				esCamino(A2,I2s1,F2s1,[s1,s1,s1]), esCamino(A2,I2s1,F2s1,[s1,s1,s1,s1,s1]),
+			ejemplo(3, A3), esCamino(A3,I3s1,F3s1,[s1]),
+			ejemplo(4, A4), not(esCamino(A4,I4,F4,[s2,s3])), esCamino(A4,I4s1,F4s3,[s1,s3]),
+			ejemplo(5, A5), 
+			ejemplo(6, A6),
+			ejemplo(7, A7),
+			ejemplo(8, A8),
+			ejemplo(9, A9),
+			ejemplo(10, A),
+			ejemploMalo(1, M1),
+			ejemploMalo(2, M2),
+			ejemploMalo(3, M3),
+			ejemploMalo(4, M4),
+			ejemploMalo(5, M5),
+			ejemploMalo(6, M6),
+			ejemploMalo(7, M7).
+
+%%Estaría bueno hacer un generador de autómatas...
