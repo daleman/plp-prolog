@@ -69,11 +69,15 @@ esCamino(A, Inicial, Final, [Inicial,Medio|Es]) :- estadoSiguiente(A,Inicial,Med
 % parámetro 'Camino' siepmre viene instanciado.
 
 % estadoSiguiente(+Automata, +Estado, -Siguiente) :- ∃ (q,e,p) transición tq Estado=q y Siguiente=p
-estadoSiguiente(A,E,S):- transicionesDe(A,T), member((E,_,S),T).
+estadoSiguiente(A,E,S):- transicionesDe(A,T1), transicionesOrdenadas(T1,T2), member((E,_,S),T2).
 
 % 4) ¿el predicado anterior es o no reversible con respecto a Camino y por qué?
 % No, al agregar el '!' al final le impedimos que genere más de un camino distinto. Para que
 % lo sea
+% esCamino(+Automata, ?EstadoInicial, ?EstadoFinal, -Camino)
+esCaminoReversible(_, E, E, [E]).
+esCaminoReversible(A, Inicial, Final, [Inicial,Medio|Es]) :- estadoSiguiente(A,Inicial,Medio),
+													esCaminoReversible(A,Medio,Final,[Medio|Es]).
 
 % 5) caminoDeLongitud(+Automata, +N, -Camino, -Etiquetas, ?S1, ?S2)
 % La misma idea, pero restringiendo la longitud del camino.
@@ -337,5 +341,9 @@ testCaminos(I1s1,F1s2,I2s1,F2s1,I3s1,F3s1,I4s1,F4s3,I5s1,F5s3,I6s1,F6s2,I7s3,F7s
 			ejemplo(8, A8), esCamino(A8,I8s1,F8s5,[s1,s2,s3,s4,s5]), esCamino(A8,I8s1,F8s5,[s1,s2,s3,s1,s2,s3,s2,s3,s4,s5]),
 			ejemplo(9, A9), esCamino(A9,I9s2,F9s1,[s2,s1]), esCamino(A9,I9s2,F9s1,[s2,s1,s2,s1,s2,s1,s2,s1]),
 			ejemplo(10, A), esCamino(A,I0a1,I0s10,[s1,s2,s3,s4,s5,s6,s7,s8,s9,s10]).
+
+% Test camino reversible (-Inicial,-Final,-Camino,+Ejemplo(N°))
+testCaminoReversible(A,Inicial,Final,Camino) :-
+			ejemplo(A,M), esCaminoReversible(M,Inicial,Final,Camino).
 
 %% Estaría bueno hacer un generador de autómatas...
