@@ -154,7 +154,7 @@ recorrer(T,F,E,[X|Xs]) :- member((E,X,Q),T), recorrer(T,F,Q,Xs).
 
 % transicionesReordenadas(
 % Creo que hay que poner primero las que te acercan a estados finales!!!
-transicionesReordenadas([T],[T]).
+transicionesReordenadas([],[]).
 transicionesReordenadas([(E,X,E)|T1],T2) :- transicionesReordenadas(T1,T3), append(T3,[(E,X,E)],T2).
 transicionesReordenadas([(E,X,Q)|T1],[(E,X,Q)|T2]) :- E\=Q, transicionesReordenadas(T1,T2).
 
@@ -305,11 +305,25 @@ test(22) :- ejemplo(1, A1), not(hayCiclo(A1)), ejemplo(2, A2), hayCiclo(A2),
 			ejemplo(3, A3), not(hayCiclo(A3)), ejemplo(4, A4), hayCiclo(A4),
 			ejemplo(5, A5), hayCiclo(A5), ejemplo(6, A6), hayCiclo(A6),
 			ejemplo(7, A7), hayCiclo(A7), ejemplo(8, A8), hayCiclo(A8),
-			ejemplo(9, A9), hayCiclo(A9), ejemplo(10, A), not(hayCiclo(A)),
-			ejemploMalo(1, M1), hayCiclo(M1), ejemploMalo(2, M2), hayCiclo(M2),
-			ejemploMalo(3, M3), not(hayCiclo(M3)), ejemploMalo(4, M4), not(hayCiclo(M4)),
-			ejemploMalo(5, M5), not(hayCiclo(M5)), ejemploMalo(6, M6), not(hayCiclo(M6)),
-			ejemploMalo(7, M7), not(hayCiclo(M7)).
+			ejemplo(9, A9), hayCiclo(A9), ejemplo(10, A), not(hayCiclo(A)).
+
+% test reconoce
+test(23) :- ejemplo(1, A1), reconoce(A1,[a]), not(reconoce(A1,[a,a])),
+			ejemplo(2, A2), reconoce(A2,[a]), reconoce(A2,[a,a,a,a,a]),
+			ejemplo(3, A3), reconoce(A3,[]), not(reconoce(A3,[_])),
+			ejemplo(4, A4), reconoce(A4,[a]), reconoce(A4,[a,a,a,a]),
+				reconoce(A4,[b]), reconoce(A4,[a,a,a,a,b]), not(reconoce(A4,[b,b])),
+			ejemplo(5, A5), not(reconoce(A5,[a])), reconoce(A5,[b]), reconoce(A5,[a,b]),
+				reconoce(A5,[a,a,a,a,b]), reconoce(A5,[a,a,a,a,c]), reconoce(A5,[b,c]),
+			ejemplo(6, A6), not(reconoce(A6,[a])), not(reconoce(A6,[b])), reconoce(A6,[b,a]),
+				not(reconoce(A6,[b,a,n])), reconoce(A6,[b,a,n,a]), reconoce(A6,[b,a,n,a,n,a]),
+			ejemplo(7, A7), not(reconoce(A7,[a])), not(reconoce(A7,[a,a])), reconoce(A7,[a,b]),
+				reconoce(A7,[a,a,a,a,a,b,b,b]), not(reconoce(A7,[b])), reconoce(A7,[a,b,b,b]),
+			ejemplo(8, A8), reconoce(A8,[a,b,b,f]), reconoce(A8,[a,a,b,f]), reconoce(A8,[a,b,b,b,b,b,b,f]),
+				reconoce(A8,[a,b,a,a,b,b,a,b,f]), reconoce(A8,[a,a,a,a,a,b,f]), not(reconoce(A8,[_,_,_])),
+			ejemplo(9, A9), reconoce(A9,[]), reconoce(A9,[a,b]), reconoce(A9,[a,b,a,b,a,b]),
+			ejemplo(10, A), reconoce(A,[p,a,r,a,d,i,g,m,a]), reconoce(A,[p,r,o,l,o,g]),
+				reconoce(A,[p,a,r,a,d,i,g,m,a,s]).
 
 %test(30) :- ejemplo(1, A1),
 %			ejemplo(2, A2),
@@ -380,6 +394,6 @@ testCaminoReversible2(Camino,A) :-
 	% 8:	[si], [s1-s2], [s1-s2-s3], [s1-s2-s3-s2], [s1-s2-s3-s1], [s1-s2-s3-s4], [s1-s2-s3-s4-s5],
 		%	[s1-s2-s3-.*.-s2-s3-s4],  [s1-s2-s3-.*.-s2-s3-s4-s5] *: Alguna cantidad de loops s3-s2-s3 o s3-s1-s2-s3
 	% 9:	[si], [s1-s2-....-s1-s2], [s2-s2-....-s2-s1]
-	% 10:	[si], subcamino de [s1-....-s15], subcamino de [s1-s2-s12-...-s15]
+	% 10:	[si], subcamino de [s1-....-s11], subcamino de [s1-s2-s12-...-s15-s11]
 
 %% Estaría bueno hacer un generador de autómatas...
