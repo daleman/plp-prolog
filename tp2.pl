@@ -35,6 +35,19 @@ transicionesDe(a(_, _, T), T).
 desde(X, X).
 desde(X, Y):-desde(X, Z),  Y is Z + 1.
 
+% Auxiliar: nos permite definir que transicion es conveniente tomar desde un estado I
+% para llegar a un estado F. Útil para generar caminos cuando son infinitos.
+% transicionOptima(+Automata,+Inicial,+Final,-Transicion).
+transicionOptima(A,I,F,(I,E,F)) :- transicionesDe(A,T), member((I,E,F),T).
+transicionOptima(A,I,F,(I,E,M)) :-
+		estados(A,Estados),
+		length(Estados,K),
+		transicionesDe(A,T),
+		between(2,K,N),
+		member(M,Estados), M\=I,
+		caminoDeLongitud(A,N,_,_,M,F),
+		member((I,E,M),T).
+transicionOptima(A,I,_,(I,E,I)) :- transicionesDe(A,T), member((I,E,I),T).
 
 %%Predicados pedidos.
 
@@ -52,6 +65,7 @@ estados(A, EstadosOrd) :- inicialDe(A,Inicial), finalesDe(A,Finales), transicion
 								union([Inicial|Finales],EstadosDeTransiciones,Estados),
 								sort(Estados,EstadosOrd).
 
+% Auxiliar: agrupa los estados de un autómata a partir de las transiciones del mismo.
 % estadosDeTransiciones(+Transiciones,-Estados) :- estados = [q | (q,e,p) ∈ transiciones] U
 												% [p | (q,e,p) ∈ transiciones]
 estadosDeTransiciones([],[]).
@@ -60,10 +74,11 @@ estadosDeTransiciones([(Q,_,P)|Transiciones],MasEstados) :-
 											union([Q,P],Estados,MasEstados).
 
 % 3) esCamino(+Automata, ?EstadoInicial, ?EstadoFinal, +Camino)
+% TODO: correjir este comentario...
 % Nos fijamos en las transiciones y vemos si hay camino en un paso, o
 % si hay camino a n-1 pasos desde un estado posterior al estado inicial.
 esCamino(_, E, E, [E]).
-esCamino(A, Inicial, Final, [Inicial,Medio|Es]) :- estadoSiguiente(A,Inicial,Medio),
+esCamino(A, Inicial, Final, [Inicial,Medio|Es]) :- transicionOptima(A,Inicial,Final,(Inicial,_,Medio)),
 													esCamino(A,Medio,Final,[Medio|Es]), !.
 % Agregamos el '!' para que sólo devuelva una unificación. Si para un par de estados consecutivos en
 % el camino, existen dos transiciones posibles, 'esCamino' devolvería otra unificación pero idéntica.
@@ -71,16 +86,14 @@ esCamino(A, Inicial, Final, [Inicial,Medio|Es]) :- estadoSiguiente(A,Inicial,Med
 % del camino), sólo le permitimos devolver una. Esta aclaración es válida teniendo en cuenta que el
 % parámetro 'Camino' siepmre viene instanciado.
 
-% estadoSiguiente(+Automata, +Estado, -Siguiente) :- ∃ (q,e,p) transición tq Estado=q y Siguiente=p
-estadoSiguiente(A,E,S):- transicionesDe(A,T1), transicionesReordenadas(T1,T2), member((E,_,S),T2).
-
 % 4) ¿el predicado anterior es o no reversible con respecto a Camino y por qué?
 % No, al agregar el '!' al final le impedimos que genere más de un camino distinto. Para que
 % lo sea, hay que quitarle el '!'.
 % esCamino(+Automata, ?EstadoInicial, ?EstadoFinal, -Camino)
 esCaminoReversible(_, E, E, [E]).
-esCaminoReversible(A, Inicial, Final, [Inicial,Medio|Es]) :- estadoSiguiente(A,Inicial,Medio),
-													esCaminoReversible(A,Medio,Final,[Medio|Es]).
+esCaminoReversible(A, Inicial, Final, [Inicial,Medio|Es]) :-
+	transicionOptima(A,Inicial,Final,(Inicial,_,Medio)),
+	esCaminoReversible(A,Medio,Final,[Medio|Es]).
 
 % 5) caminoDeLongitud(+Automata, +N, -Camino, -Etiquetas, ?S1, ?S2)
 % La misma idea, pero restringiendo la longitud del camino.
@@ -150,23 +163,13 @@ hayCiclo(A) :- estados(A,Estados), length(Estados,CantEstados), CEMasUno is Cant
 % nos interesa recibir un true o false, así que si encuentra un camino, dejamos de buscar otros.
 
 % 9) reconoce(+Automata, ?Palabra) :- recorrer(transiciones, finales, inicial, palabra)
+% TODO: Cambiar para que en lugar de usar 'transicionesReordenadas', use 'transicionOptima'
 reconoce(A,P) :- inicialDe(A,I), finalesDe(A,F), transicionesDe(A,T1),
 					transicionesReordenadas(T1,T2), recorrer(T2,F,I,P).
 
 % TODO: recorrer(
 recorrer(_,F,E,[]) :- member(E,F).
 recorrer(T,F,E,[X|Xs]) :- member((E,X,Q),T), recorrer(T,F,Q,Xs).
-
-% TODO: transicionesReordenadas(
-% FIXME: Creo que hay que poner primero las que te acercan a estados finales!!!
-	% Otra opción: reordenar en cada paso para obtener primero las transiciones que te lleven a estados finales
-		% (o a un estado específico pasado por parámetro);
-		% Nueva idea: obtenerTransiciónOptima(Transiciones,EstadoActual,Estado(s)Objetivo(s),Transicion(es)Resultado(s)).
-		% Debería servir también para esCaminoReversible, para que genere todos los caminos y no solo [s1],[s1-s1],[s1-...-s1],etc.
-		% Podría servir también para palabraMasCorta.
-transicionesReordenadas([],[]).
-transicionesReordenadas([(E,X,E)|T1],T2) :- transicionesReordenadas(T1,T3), append(T3,[(E,X,E)],T2).
-transicionesReordenadas([(E,X,Q)|T1],[(E,X,Q)|T2]) :- E\=Q, transicionesReordenadas(T1,T2).
 
 % 10) PalabraMásCorta(+Automata, ?Palabra)
 palabraMasCorta(_, _).
@@ -466,3 +469,5 @@ testPalabraMasCorta(Palabra, A) :-
 	% 10:	[prolog]
 
 %% TODO: Estaría bueno hacer un generador de autómatas...
+%generadorAutomatas(a(1,[1],[])).
+%generadorAutomatas(a(1,Fs,[(p,e,q)|Ts])) :- generadorAutomata(1,Fs,Ts), .
