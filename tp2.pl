@@ -331,7 +331,7 @@ test(23) :- ejemplo(1, A1), reconoce(A1,[a]), not(reconoce(A1,[a,a])),
 		reconoce(A,[p,a,r,a,d,i,g,m,a,s]).
 
 % Test palabra mas corta
-test(24) :- ejemplo(1, A1), palabraMasCorta(A1, [a]), ejemplo(2, A2), palabraMasCorta(A2, [a]),
+test(24) :- ejemplo(1, A1), palabraMasCorta(A1, [a]), ejemplo(2, A2), palabraMasCorta(A2, []),
 	ejemplo(3, A3), palabraMasCorta(A3, []),
 	ejemplo(4, A4), palabraMasCorta(A4, [a]), palabraMasCorta(A4, [b]),
 	ejemplo(5, A5), palabraMasCorta(A5, [b]), palabraMasCorta(A5, [c]),
@@ -405,6 +405,7 @@ testCaminoReversible2(Camino,A) :-
 	% FIXME: primero toma el inicial, después el final y después busca los caminos.
 		% Si hay infinitos caminos entre algún par de estados, no va a recorrer los demás.
 		% Solución: debería tomar en otro orden.
+		% Otra solución: Quitar este test, no es indispensable.
 	ejemplo(A,M), estados(M,Estados), member(Inicial,Estados), member(Final,Estados),
 	esCaminoReversible(M,Inicial,Final,Camino).
 	% Deberían devolver (según el número de ejemplo ingresado):
@@ -426,5 +427,42 @@ testCaminoReversible2(Camino,A) :-
 % Debería generar todos los caminos del automata (igual que testCaminoReversible2).
 testCaminoReversible3(Camino,A) :-
 	ejemplo(A,M), esCaminoReversible(M,_,_,Camino).
+
+% Test camino de longitud (?Ejemplo(N°), -Camino, +MaxLongitud)
+% Debería generar todos los caminos de longitud menor o igual a MaxLongitud.
+% Si no se instancia el número de autómata, se ejecuta para los 10.
+testCaminoDeLongitud(A, Camino, MaxLongitud) :-
+	between(1,10,A), ejemplo(A,M), between(2,MaxLongitud,N),
+	caminoDeLongitud(M,N,Camino,_,_,_).
+
+% Test reconoce (-Palabra, +Ejemplo(N°))
+testReconoce(Palabra, A) :-
+	ejemplo(A,M), reconoce(M,Palabra).
+	% Deberían devolver (según el número de ejemplo ingresado):
+	% 1:	[a]
+	% 2:	[], [a....a]
+	% 3:	[]
+	% 4:	[a...a], [b], [a...ab]
+	% 5:	[b], [c], [b,c], [a...ab], [a...ac], [a...abc]
+	% 6:	[ba], [bana...na]
+	% 7:	[ab], [a...ab...b]
+	% 8:	[(aa|ab)·(aaa|aab|ba|bb)*·bf] ← Notación de TLeng (Expresión regular)
+	% 9:	[], [ab], [ab...ab]
+	% 10:	[prolog], [paradigma], [paradigmas]
+
+%Test palabra mas corta (-Palabra, ?Ejemplo(N°))
+testPalabraMasCorta(Palabra, A) :-
+	between(1,10,A), ejemplo(A,M), palabraMasCorta(M,Palabra).
+	% Deberían devolver (según el número de ejemplo):
+	% 1:	[a]
+	% 2:	[]
+	% 3:	[]
+	% 4:	[a], [b]
+	% 5:	[b], [c]
+	% 6:	[ba]
+	% 7:	[ab]
+	% 8:	[aabf], [abbf]
+	% 9:	[]
+	% 10:	[prolog]
 
 %% TODO: Estaría bueno hacer un generador de autómatas...
