@@ -38,16 +38,28 @@ desde(X, Y):-desde(X, Z),  Y is Z + 1.
 % Auxiliar: nos permite definir que transicion es conveniente tomar desde un estado I
 % para llegar a un estado F. Útil para generar caminos cuando son infinitos.
 % transicionOptima(+Automata,+Inicial,+Final,-Transicion).
-transicionOptima(A,I,F,(I,E,F)) :- transicionesDe(A,T), member((I,E,F),T).
-transicionOptima(A,I,F,(I,E,M)) :-
+transicionOptima(A,I,Fs,(I,E,F)) :- member(F,Fs), transicionesDe(A,T), member((I,E,F),T).
+transicionOptima(A,I,Fs,(I,E,M)) :-
 		estados(A,Estados),
 		length(Estados,K),
 		transicionesDe(A,T),
 		between(2,K,N),
 		member(M,Estados), M\=I,
+		member(F,Fs),
 		caminoDeLongitud(A,N,_,_,M,F),
-		member((I,E,M),T).
+		member((I,E,M),T),
+		noHayCaminoMasCorto(A,N,M,[F]).
 transicionOptima(A,I,_,(I,E,I)) :- transicionesDe(A,T), member((I,E,I),T).
+% Usada para
+	% 4) esCaminoReversible
+	% 9) reconoce
+
+% Auxiliar: determina si es cierto que no existe un camino de longitud menor a N entre el
+% estado I y un estado del conjunto Fs.
+% noHayCaminoMasCorto(+Automata,+N,+I,+Fs).
+noHayCaminoMasCorto(A,N,I,Fs) :- not((					% ∄ camino tq
+	Nm1 is N-1, between(1,Nm1,M), member(F,Fs),				% for M { for F {
+	caminoDeLongitud(A,M,_,_,I,F) )).
 
 %%Predicados pedidos.
 
@@ -65,7 +77,7 @@ estados(A, EstadosOrd) :- inicialDe(A,Inicial), finalesDe(A,Finales), transicion
 								union([Inicial|Finales],EstadosDeTransiciones,Estados),
 								sort(Estados,EstadosOrd).
 
-% Auxiliar: agrupa los estados de un autómata a partir de las transiciones del mismo.
+% Auxiliar: obtiene los estados de un autómata a partir de las transiciones del mismo.
 % estadosDeTransiciones(+Transiciones,-Estados) :- estados = [q | (q,e,p) ∈ transiciones] U
 												% [p | (q,e,p) ∈ transiciones]
 estadosDeTransiciones([],[]).
@@ -74,12 +86,13 @@ estadosDeTransiciones([(Q,_,P)|Transiciones],MasEstados) :-
 											union([Q,P],Estados,MasEstados).
 
 % 3) esCamino(+Automata, ?EstadoInicial, ?EstadoFinal, +Camino)
-% TODO: correjir este comentario...
-% Nos fijamos en las transiciones y vemos si hay camino en un paso, o
-% si hay camino a n-1 pasos desde un estado posterior al estado inicial.
-esCamino(_, E, E, [E]).
-esCamino(A, Inicial, Final, [Inicial,Medio|Es]) :- transicionOptima(A,Inicial,Final,(Inicial,_,Medio)),
-													esCamino(A,Medio,Final,[Medio|Es]), !.
+% Un camino de un solo estado es un camino válido entre un estado y él mismo.
+% Dado un camino válido entre un estado medio y el final, si existe una transición entre
+% el estado inicial y el estado medio, obtenemos un camino válido entre el estado inicial y el final.
+esCamino(A, E, E, [E]) :- estados(A, Estados), member(E, Estados).
+esCamino(A, Inicial, Final, [Inicial,Medio|Es]) :-
+	transicionesDe(A,T), member((Inicial,_,Medio),T),
+	esCamino(A,Medio,Final,[Medio|Es]), !.
 % Agregamos el '!' para que sólo devuelva una unificación. Si para un par de estados consecutivos en
 % el camino, existen dos transiciones posibles, 'esCamino' devolvería otra unificación pero idéntica.
 % Como todas las unificaciones posibles son iguales (determinadas por los estados primero y último
@@ -89,15 +102,23 @@ esCamino(A, Inicial, Final, [Inicial,Medio|Es]) :- transicionOptima(A,Inicial,Fi
 % 4) ¿el predicado anterior es o no reversible con respecto a Camino y por qué?
 % No, al agregar el '!' al final le impedimos que genere más de un camino distinto. Para que
 % lo sea, hay que quitarle el '!'.
+	% TODO: Además, no puede generar todos los caminos [...] entonces hay que usar transicionOptima [...]
 % esCamino(+Automata, ?EstadoInicial, ?EstadoFinal, -Camino)
-esCaminoReversible(_, E, E, [E]).
+esCaminoReversible(A, E, E, [E]) :- estados(A, Estados), member(E, Estados).
 esCaminoReversible(A, Inicial, Final, [Inicial,Medio|Es]) :-
-	transicionOptima(A,Inicial,Final,(Inicial,_,Medio)),
+	transicionOptima(A,Inicial,[Final],(Inicial,_,Medio)),
 	esCaminoReversible(A,Medio,Final,[Medio|Es]).
 
 % 5) caminoDeLongitud(+Automata, +N, -Camino, -Etiquetas, ?S1, ?S2)
-% La misma idea, pero restringiendo la longitud del camino.
-caminoDeLongitud(_,1,[S1],[],S1,S1).
+% La idea es similar a la de 'esCamino'.
+% Un camino de un solo estado es un camino válido de longitud 1 entre un estado y él mismo.
+% Un camino de longitud 2 es válido si hay una transición entre el par de estados involucrados.
+% Dado un camino válido de longitud N-1 entre un estado medio y el final, si existe una
+% transición entre el estado inicial y el estado medio, obtenemos un camino válido de longitud N
+% entre el estado inicial y el final. Como la cantidad de caminos de una longitud dada es finita,
+% no necesitamos utilizar 'transicionOptima', podemos simplemente recorrerlas todas. Además,
+% 'transicionOptima' utiliza 'caminoDeLongitud', por lo que no tendría sentido.
+caminoDeLongitud(A,1,[S1],[],S1,S1) :- estados(A, Estados), member(S1, Estados).
 caminoDeLongitud(A,2,[S1,S2],[E],S1,S2) :- transicionesDe(A,T), member((S1,E,S2),T).
 caminoDeLongitud(A,N,[S1|Cs],[E|Es],S1,S2):- N>2, Nm1 is N-1,
 												transicionesDe(A,T), member((S1,E,SMedio),T),
@@ -160,19 +181,22 @@ hayCiclo(A) :- estados(A,Estados), length(Estados,CantEstados), CEMasUno is Cant
 				between(2,CEMasUno,N), member(S1,Estados), caminoDeLongitud(A,N,_,_,S1,S1), !.
 % Agregamos el '!' para que sólo devuelva una unificación. Es posible que haya más de un
 % 'caminoDeLongitud' y varios valores de 'N' par los cuales encontrarlos. Sin embargo, sólo
-% nos interesa recibir un true o false, así que si encuentra un camino, dejamos de buscar otros.
+% nos interesa recibir un true o false, así que si encuentra un ciclo, dejamos de buscar otros.
 
-% 9) reconoce(+Automata, ?Palabra) :- recorrer(transiciones, finales, inicial, palabra)
-% TODO: Cambiar para que en lugar de usar 'transicionesReordenadas', use 'transicionOptima'
-reconoce(A,P) :- inicialDe(A,I), finalesDe(A,F), transicionesDe(A,T1),
-					transicionesReordenadas(T1,T2), recorrer(T2,F,I,P).
+% 9) reconoce(+Automata, ?Palabra) :- recorrer(Automata, inicial, palabra)
+reconoce(A,P) :- inicialDe(A,Inicial), recorrer(A,Inicial,P).
 
-% TODO: recorrer(
-recorrer(_,F,E,[]) :- member(E,F).
-recorrer(T,F,E,[X|Xs]) :- member((E,X,Q),T), recorrer(T,F,Q,Xs).
+% Auxiliar: recorre los estados generando un camino entre el estado Actual y algun estado final.
+% recorrer(+Automata, +Actual, ?Palabra)
+recorrer(A,E,[]) :- finalesDe(A,Finales), member(E,Finales).
+recorrer(A,E,[X|Xs]) :- finalesDe(A,Finales), transicionOptima(A,E,Finales,(E,X,Medio)),
+						recorrer(A,Medio,Xs).
 
 % 10) PalabraMásCorta(+Automata, ?Palabra)
-palabraMasCorta(_, _).
+palabraMasCorta(A,P) :-
+	estados(A,Estados), length(Estados,K), inicialDe(A,I), finalesDe(A,Fs),	% Tomo datos
+	between(1,K,N),	member(F,Fs),											% for N { for F {
+	caminoDeLongitud(A,N,_,P,I,F), noHayCaminoMasCorto(A,N,I,Fs).
 
 %-----------------
 %----- Tests -----
@@ -338,13 +362,14 @@ test(24) :- ejemplo(1, A1), palabraMasCorta(A1, [a]), ejemplo(2, A2), palabraMas
 	ejemplo(3, A3), palabraMasCorta(A3, []),
 	ejemplo(4, A4), palabraMasCorta(A4, [a]), palabraMasCorta(A4, [b]),
 	ejemplo(5, A5), palabraMasCorta(A5, [b]), palabraMasCorta(A5, [c]),
-	ejemplo(6, A6), palabraMasCorta(A6, [ba]), ejemplo(7, A7), palabraMasCorta(A7, [ab]),
-	ejemplo(8, A8), palabraMasCorta(A8, [aabf]), palabraMasCorta(A8, [abbf]),
-	ejemplo(9, A9), palabraMasCorta(A9, []), ejemplo(10, A), palabraMasCorta(A, [prolog]).
+	ejemplo(6, A6), palabraMasCorta(A6, [b,a]), ejemplo(7, A7), palabraMasCorta(A7, [a,b]),
+	ejemplo(8, A8), palabraMasCorta(A8, [a,a,b,f]), palabraMasCorta(A8, [a,b,b,f]),
+	ejemplo(9, A9), palabraMasCorta(A9, []), ejemplo(10, A), palabraMasCorta(A, [p,r,o,l,o,g]).
 
 tests :- forall(between(1, 24, N), test(N)).
 
-% otros Tests (En estos tests no queremos que nos devuelva true, sino que queremos ver qué se genera):
+% Tests Generadores
+% En estos tests no queremos que nos devuelva true, sino que queremos ver qué se genera.
 
 % Test estados
 testEstados(E1q2,E2q1,E3q1,E4q3,E5q3,E6q3,E7q3,E8q5,E9q2,Eq15,F1q3,F2q2,F3q3,F4q3,F5q3,F6q3,F7q3) :-
@@ -362,7 +387,7 @@ testEstados(E1q2,E2q1,E3q1,E4q3,E5q3,E6q3,E7q3,E8q5,E9q2,Eq15,F1q3,F2q2,F3q3,F4q
 
 % Test caminos
 testCaminos(I1s1,F1s2,I2s1,F2s1,I3s1,F3s1,I4s1,F4s3,I5s1,F5s3,I6s1,F6s2,
-											I7s3,F7s2,I8s1,F8s5,I9s2,F9s1,I0a1,I0s10) :-
+											I7s3,F7s2,I8s1,F8s5,I9s2,F9s1,I0s1,I0s10) :-
 	ejemplo(1, A1), esCamino(A1,I1s1,F1s2,[s1,s2]), not(esCamino(A1,_,_,[s2,s1])),
 	ejemplo(2, A2), esCamino(A2,I2s1,F2s1,[s1]), esCamino(A2,I2s1,F2s1,[s1,s1]),
 		esCamino(A2,I2s1,F2s1,[s1,s1,s1]), esCamino(A2,I2s1,F2s1,[s1,s1,s1,s1,s1]),
@@ -374,10 +399,11 @@ testCaminos(I1s1,F1s2,I2s1,F2s1,I3s1,F3s1,I4s1,F4s3,I5s1,F5s3,I6s1,F6s2,
 	ejemplo(8, A8), esCamino(A8,I8s1,F8s5,[s1,s2,s3,s4,s5]),
 		esCamino(A8,I8s1,F8s5,[s1,s2,s3,s1,s2,s3,s2,s3,s4,s5]),
 	ejemplo(9, A9), esCamino(A9,I9s2,F9s1,[s2,s1]), esCamino(A9,I9s2,F9s1,[s2,s1,s2,s1,s2,s1,s2,s1]),
-	ejemplo(10, A), esCamino(A,I0a1,I0s10,[s1,s2,s3,s4,s5,s6,s7,s8,s9,s10]).
+	ejemplo(10, A), esCamino(A,I0s1,I0s10,[s1,s2,s3,s4,s5,s6,s7,s8,s9,s10]).
 	% Debería devolver:
 	% Iisṇ = sṇ, Fisṇ = sṇ
 
+%%%FALLA: C,7,s1,s2 : C,7,s3,s2 : C,8,_,_
 % Test camino reversible Con estados instanciados (-Camino,+Ejemplo(N°),+Inicial,+Final)
 % Debería generar todos los posibles caminos entre el par de estados dados.
 testCaminoReversible1(Camino,A,Inicial,Final) :-
@@ -402,15 +428,11 @@ testCaminoReversible1(Camino,A,Inicial,Final) :-
 	% 9:	s1,s1: [s1-s2-s1...-s2-s1]		s1,s2: [s1-s2-...-s1-s2]
 		%	s2,s2: [s2-s1-s2-...-s1-s2]		s2,s1: [s2-s1-s2-...-s1-s2]
 
-% Test camino reversible para todo par de estados (-Camino,+Ejemplo(N°))
+%%%FALLA: Todos los que tienen ciclos y después siguen.
+% Test camino reversible sin instanciar estados (-Camino,+Ejemplo(N°))
 % Debería generar todos los caminos del automata.
 testCaminoReversible2(Camino,A) :-
-	% FIXME: primero toma el inicial, después el final y después busca los caminos.
-		% Si hay infinitos caminos entre algún par de estados, no va a recorrer los demás.
-		% Solución: debería tomar en otro orden.
-		% Otra solución: Quitar este test, no es indispensable.
-	ejemplo(A,M), estados(M,Estados), member(Inicial,Estados), member(Final,Estados),
-	esCaminoReversible(M,Inicial,Final,Camino).
+	ejemplo(A,M), esCaminoReversible(M,_,_,Camino).
 	% Deberían devolver (según el número de ejemplo ingresado):
 	% 1:	[si], [s1-s2]
 	% 2:	[si], [s1-...-s1]
@@ -426,18 +448,16 @@ testCaminoReversible2(Camino,A) :-
 	% 9:	[si], [s1-s2-....-s1-s2], [s2-s2-....-s2-s1]
 	% 10:	[si], subcamino de [s1-....-s11], subcamino de [s1-s2-s12-...-s15-s11]
 
-% Test camino reversible sin instanciar estados (-Camino,+Ejemplo(N°))
-% Debería generar todos los caminos del automata (igual que testCaminoReversible2).
-testCaminoReversible3(Camino,A) :-
-	ejemplo(A,M), esCaminoReversible(M,_,_,Camino).
-
 % Test camino de longitud (?Ejemplo(N°), -Camino, +MaxLongitud)
-% Debería generar todos los caminos de longitud menor o igual a MaxLongitud.
+% Debería generar todos los caminos de longitud menor o igual a MaxLongitud (ignoramos los de
+% longitud 1 que son triviales).
 % Si no se instancia el número de autómata, se ejecuta para los 10.
 testCaminoDeLongitud(A, Camino, MaxLongitud) :-
 	between(1,10,A), ejemplo(A,M), between(2,MaxLongitud,N),
 	caminoDeLongitud(M,N,Camino,_,_,_).
 
+%%%Devuelve repetidos: P,5 : P,10
+%%%FALLA: P,7 : P,9
 % Test reconoce (-Palabra, +Ejemplo(N°))
 testReconoce(Palabra, A) :-
 	ejemplo(A,M), reconoce(M,Palabra).
@@ -470,4 +490,4 @@ testPalabraMasCorta(Palabra, A) :-
 
 %% TODO: Estaría bueno hacer un generador de autómatas...
 %generadorAutomatas(a(1,[1],[])).
-%generadorAutomatas(a(1,Fs,[(p,e,q)|Ts])) :- generadorAutomata(1,Fs,Ts), .
+%generadorAutomatas(a(1,Fs,[(p,e,q)|Ts])) :- generadorAutomata(1,Fs,Ts), ... .
